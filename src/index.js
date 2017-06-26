@@ -8,6 +8,7 @@ import InitCommand from "./commands/InitCommand";
 import RunCommand from "./commands/RunCommand";
 import ExecCommand from "./commands/ExecCommand";
 import LsCommand from "./commands/LsCommand";
+import PluginCommand from "./commands/PluginCommand";
 
 export default {
   BootstrapCommand,
@@ -19,5 +20,6 @@ export default {
   InitCommand,
   RunCommand,
   ExecCommand,
-  LsCommand
+  LsCommand,
+  PluginCommand,
 };
