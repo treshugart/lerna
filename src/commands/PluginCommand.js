@@ -62,10 +62,14 @@ export default class PluginCommand extends Command {
     tracker.addWork(this.filteredPackages.length);
 
     PackageUtilities.runParallelBatches(this.batchedPackages, (pkg) => (done) => {
-      this.plugin(this.script, pkg, tracker, (err) => {
+      this.plugin((err) => {
         tracker.silly(pkg.name);
         tracker.completeWork(1);
         done(err);
+      }, {
+        log: tracker,
+        name: this.script,
+        pkg,
       });
     }, this.concurrency, (err) => {
       tracker.finish();
