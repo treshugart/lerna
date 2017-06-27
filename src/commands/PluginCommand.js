@@ -22,6 +22,26 @@ export const builder = {
 };
 
 export default class PluginCommand extends Command {
+  get defaultPluginGlobs() {
+    return [
+      "./plugins",
+      "./node_modules/lerna-plugin-*"
+    ];
+  }
+
+  get plugin() {
+    const { plugins = this.defaultPluginGlobs } = this.repository.lernaJson;
+    let plugin;
+    plugins.forEach((pattern) => {
+      glob.sync(path.join(process.cwd(), pattern)).forEach((pluginDir) => {
+        try {
+          plugin = require(path.join(pluginDir, this.script));
+        } catch (e) {}
+      });
+    });
+    return plugin;
+  }
+
   get requiresGit() {
     return false;
   }
@@ -35,18 +55,10 @@ export default class PluginCommand extends Command {
       return;
     }
 
-    const { plugins = ["plugins"] } = this.repository.lernaJson;
-    plugins.forEach((pattern) => {
-      glob.sync(path.join(process.cwd(), pattern)).forEach((pluginDir) => {
-        const pluginFile = path.join(pluginDir, this.script) + ".js";
-        if (fs.existsSync(pluginFile)) {
-          this.plugin = require(pluginFile);
-        }
-      });
-    });
+    this._plugin = this.plugin;
 
-    if (!this.plugin) {
-      callback(new Error(`Unable to find plugin ${this.script}.`));
+    if (!this._plugin) {
+      callback(new Error(`Unable to find plugin '${this.script}'.`));
       return;
     }
 
@@ -58,21 +70,17 @@ export default class PluginCommand extends Command {
   }
 
   execute(callback) {
-    const tracker = this.logger.newItem(this.script);
-    tracker.addWork(this.filteredPackages.length);
+    const log = this.logger.newItem(this.script);
+    log.addWork(this.filteredPackages.length);
 
     PackageUtilities.runParallelBatches(this.batchedPackages, (pkg) => (done) => {
-      this.plugin((err) => {
-        tracker.silly(pkg.name);
-        tracker.completeWork(1);
+      this._plugin((err) => {
+        log.silly(pkg.name);
+        log.completeWork(1);
         done(err);
-      }, {
-        log: tracker,
-        name: this.script,
-        pkg,
-      });
+      }, { cmd: this, log, pkg });
     }, this.concurrency, (err) => {
-      tracker.finish();
+      log.finish();
       callback(err);
     });
   }
